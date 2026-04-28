@@ -153,12 +153,12 @@ def fetch_pdfs(
 
     user = os.environ.get("GMAIL_ADDRESS", "").strip()
     pw = os.environ.get("GMAIL_APP_PASSWORD", "").strip()
-    sender = sender or os.environ.get("DHAN_SENDER", "noreply@dhan.co").strip()
-    subject_keyword = (
-        subject_keyword
-        if subject_keyword is not None
-        else os.environ.get("DHAN_SUBJECT_KEYWORD", "trade").strip()
-    )
+    # Defaults verified against this account in Apr 2026.
+    # Treat an explicitly-empty env var (common in CI when an optional secret
+    # isn't set) the same as "missing", and fall through to the default.
+    sender = sender or (os.environ.get("DHAN_SENDER") or "").strip() or "statements@dhan.co"
+    if subject_keyword is None:
+        subject_keyword = (os.environ.get("DHAN_SUBJECT_KEYWORD") or "").strip() or "Contract Note"
 
     if not user or not pw:
         print(
