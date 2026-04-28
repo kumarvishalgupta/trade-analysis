@@ -1,0 +1,45 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# SECRETS — never commit
+# ─────────────────────────────────────────────────────────────────────────────
+.env
+.env.*
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FINANCIAL DATA — personal trade data, never commit
+# ─────────────────────────────────────────────────────────────────────────────
+TradesFromPDFs.csv
+Trades log/
+analysis_history/
+candle_cache/
+*.pdf
+
+# Gmail / IMAP fetch dedup manifest
+.processed
+
+# Generated dashboard data (deployed via gh-pages, not main branch)
+dashboard/public/enriched_trades.json
+dashboard/public/sessions.json
+
+# ─────────────────────────────────────────────────────────────────────────────
+# BUILD & DEPS
+# ─────────────────────────────────────────────────────────────────────────────
+dashboard/node_modules/
+dashboard/dist/
+dashboard/dist-ssr/
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SYSTEM
+# ─────────────────────────────────────────────────────────────────────────────
+.DS_Store
+__pycache__/
+*.pyc
+*.pyo
+*.log
+*.local
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

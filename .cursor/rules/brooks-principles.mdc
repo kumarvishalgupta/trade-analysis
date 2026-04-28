@@ -1,0 +1,32 @@
+---
+description: "Al Brooks Price Action principles for the Trade Integrity Dashboard. Reference this when implementing trading logic, scoring, pattern detection, or analyzing trade quality."
+globs: fetch_and_analyze.py,dashboard/src/App.jsx
+---
+
+# Al Brooks Price Action — Core Principles
+
+These principles govern all analysis logic in the Trade Integrity Dashboard.
+
+1. **"Close is usually close enough"** — Functional patterns > textbook perfection
+2. **Barb Wire = No Trade Zone** — 3+ overlapping bars with a doji. Price is magnetized to the middle.
+3. **2HM Rule** — Price away from EMA for 2+ hours = trend strength. First EMA Gap Bar after 2HM = high-probability fade.
+4. **Failed Failures = Highest Alpha** — A reliable setup failing by one tick → opposite move fueled by trapped traders liquidating.
+5. **Trendline Break Required** — No reversal is valid without a prior trendline break.
+6. **Always In Status** — At any point, either bulls or bears are "always in." Trading against AIS is countertrend.
+7. **Shrinking Stairs = Waning Momentum** — Decreasing breakout distances → imminent two-legged reversal.
+8. **Good Fill = Bad Trade** — "Bargain" entry in a strong trend = likely trap.
+9. **Vacuum Effect** — Price sucked toward magnets (PDH/PDL, gaps, measured moves). Entries near a magnet are late.
+10. **Market Phases**: SPIKE (every pullback = buy/sell), CHANNEL (trade at EMA), TRADING RANGE (fade failed breakouts only).
+
+## Phase-Specific Rules
+| Phase | Valid Setups | Invalid Setups |
+|-------|-------------|----------------|
+| SPIKE | With-trend on every pullback, L1 as reliable as L2 | All countertrend |
+| CHANNEL | M2B/M2S at EMA, pullback entries | Chasing breakouts at extremes |
+| TRADING RANGE | Fades of failed breakouts only | All breakout entries |
+
+## Signal Bar Nuances
+- In strong trend: dojis on pullbacks = pause setup (GOOD), not weakness
+- Shaved bar on Leg 1 = institutional urgency (GOOD)
+- Shaved bar on Leg 3+ = exhaustion climax (TRAP)
+- Failed L2 in bull / Failed H2 in bear = "perfect trap" (highest alpha)

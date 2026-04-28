@@ -1,0 +1,56 @@
+---
+alwaysApply: true
+---
+
+# Trade Integrity Dashboard — Sub-Agent Orchestration
+
+You are coordinating the upgrade of a Trade Integrity Dashboard for NSE index futures (BANKNIFTY, NIFTY). The upgrade is broken into 7 specialized sub-agents that MUST be executed in dependency order.
+
+## System Context
+```
+STACK:  Python backend (fetch_and_analyze.py) → enriched_trades.json → React frontend (App.jsx)
+DATA:   5-min OHLC candles, 20-period EMA, 9:15-15:30 IST, cached in candle_cache/
+DEPS:   Python: numpy, pandas, stdlib only | React: Tailwind CSS, SVG/Canvas only, no charting libs
+```
+
+## Sub-Agent Execution Order (STRICT)
+
+When asked to upgrade the Trade Integrity Dashboard, execute these sub-agents in this exact order. Each must complete and validate before the next begins.
+
+### Phase 1 — Python Backend (sequential, each depends on previous)
+
+1. **@core-logic-fixer** → Fixes 5 bugs in fetch_and_analyze.py (EMA slope, leg reset, trendline, market phase, signal bar)
+   - Validate: `python fetch_and_analyze.py` runs. New flags: marketPhase, emaSlope, emaSlopeClassification, trendlineIntact
+
+2. **@indicator-builder** → Adds 12 new detection functions to fetch_and_analyze.py
+   - Validate: All new flag fields from schema-contract appear in output JSON
+
+3. **@scoring-engine** → Rewrites scoring with decomposition, quality classification, mistake tags
+   - Validate: Every trade has scoreDecomposition, tradeQuality, mistakeTag, thesis, reality
+
+4. **@session-builder** → Builds shared sessions object for chart data export
+   - Validate: sessions keys match all sessionKey values. Each session has ~75 candles + ema array
+
+### Phase 2 — React Frontend (5 + 6 can run in parallel, 7 depends on both)
+
+5. **@card-ui** → Card badges, heatmap clicks, anti-portfolio toggle, visual upgrades in App.jsx
+   - Validate: `npm run dev` in dashboard/ — no console errors
+
+6. **@detail-view** → Full-session candlestick modal, annotations, replay slider in App.jsx
+   - Validate: Modal opens on card click, renders ~75 bars, annotations toggle
+
+7. **@anti-mistake** → Learning system: quality matrix, win rate chart, discipline timeline in App.jsx
+   - Validate: Win rate brackets correct, quality matrix sums to total trades
+
+## Validation Protocol (After Each Sub-Agent)
+- Schema compliance: new fields match [schema-contract](mdc:schema-contract.mdc)
+- No regressions: existing fields unchanged
+- File scope: agent only modified its designated files
+- No new dependencies: no pip install or npm install
+- Runnable: python/npm runs without errors
+
+## When to Spawn Sub-Agents
+- If asked to "upgrade the dashboard" or "run the full upgrade" → run all 7 in order
+- If asked to "fix the Python backend" → run phases 1-4
+- If asked to "upgrade the frontend" → run phases 5-7
+- If asked about a specific feature (e.g., "add market phase detection") → spawn only the matching sub-agent

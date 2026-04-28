@@ -1,0 +1,95 @@
+name: Sync Trades & Deploy Dashboard
+
+# How to trigger:
+#   - From the GitHub website  → Actions tab → "Sync Trades & Deploy Dashboard" → "Run workflow"
+#   - From the GitHub mobile app → Actions → tap the workflow → "Run workflow"
+#
+# Required Secrets (Settings → Secrets and variables → Actions → Repository secrets):
+#   GMAIL_ADDRESS        your@gmail.com
+#   GMAIL_APP_PASSWORD   xxxx-xxxx-xxxx-xxxx   (Google App Password, NOT your real password)
+#   PDF_PASSWORD         <your PAN, uppercase>
+#
+# Optional Secrets:
+#   DHAN_SENDER          override the default sender (default: noreply@dhan.co)
+#   DHAN_SUBJECT_KEYWORD override default subject filter (default: trade)
+
+on:
+  workflow_dispatch:
+    inputs:
+      since:
+        description: "Only fetch emails on/after this date (YYYY-MM-DD). Leave blank for all."
+        required: false
+        default: ""
+
+permissions:
+  contents: write   # needed for peaceiris/actions-gh-pages to push to gh-pages branch
+
+concurrency:
+  group: sync-trades
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: dashboard/package-lock.json
+
+      - name: Install Python deps
+        run: pip install -r requirements.txt
+
+      - name: Install npm deps
+        run: npm ci
+        working-directory: dashboard
+
+      - name: Run pipeline (fetch → parse → analyze → build)
+        env:
+          # Gmail / IMAP
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          DHAN_SENDER: ${{ secrets.DHAN_SENDER }}
+          DHAN_SUBJECT_KEYWORD: ${{ secrets.DHAN_SUBJECT_KEYWORD }}
+          # PDF
+          PDF_PASSWORD: ${{ secrets.PDF_PASSWORD }}
+          # Candle source
+          BROKER: yfinance
+          # Vite base path: /<repo>/  (computed from the repo name automatically)
+          VITE_BASE: /${{ github.event.repository.name }}/
+        run: |
+          if [ -n "${{ inputs.since }}" ]; then
+            python pipeline.py --since "${{ inputs.since }}"
+          else
+            python pipeline.py
+          fi
+
+      - name: Add SPA + .nojekyll guard
+        run: |
+          touch dashboard/dist/.nojekyll
+          # Use the built index.html as a 404 fallback so deep links work
+          if [ -f dashboard/dist/index.html ]; then
+            cp dashboard/dist/index.html dashboard/dist/404.html
+          fi
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dashboard/dist
+          publish_branch: gh-pages
+          force_orphan: true
+          user_name: "github-actions[bot]"
+          user_email: "github-actions[bot]@users.noreply.github.com"
+          commit_message: "Deploy dashboard ${{ github.sha }}"

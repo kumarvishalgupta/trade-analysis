@@ -1,0 +1,59 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #0a0a0f;
+  color: #e2e8f0;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #1a1a2e; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+/* Barb Wire dimming overlay */
+.barb-wire-dim {
+  filter: brightness(0.45) saturate(0.3);
+  transition: filter 0.5s ease;
+}
+.barb-wire-dim:hover {
+  filter: brightness(0.7) saturate(0.6);
+}
+
+/* Sparkline path animation */
+@keyframes draw {
+  to { stroke-dashoffset: 0; }
+}
+.sparkline-path {
+  stroke-dasharray: 500;
+  stroke-dashoffset: 500;
+  animation: draw 1.5s ease forwards;
+}
+
+/* Gauge animation */
+@keyframes fill-gauge {
+  from { stroke-dashoffset: 251; }
+}
+.gauge-fill {
+  animation: fill-gauge 1.5s ease forwards;
+}
+
+/* Pulsing red glow for bad trade warning */
+.bad-trade-pulse {
+  animation: bad-trade 1.2s ease-in-out infinite alternate;
+}
+@keyframes bad-trade {
+  0% { box-shadow: 0 0 5px rgba(239, 68, 68, 0.3), inset 0 0 5px rgba(239, 68, 68, 0.1); }
+  100% { box-shadow: 0 0 25px rgba(239, 68, 68, 0.7), inset 0 0 15px rgba(239, 68, 68, 0.2); }
+}

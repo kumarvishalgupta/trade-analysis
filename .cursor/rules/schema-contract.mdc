@@ -1,0 +1,169 @@
+---
+description: "Schema contract for the Trade Integrity Dashboard JSON output — the binding agreement between Python backend and React frontend. Reference this when working on enriched_trades.json structure, fetch_and_analyze.py output, or App.jsx data consumption."
+globs: fetch_and_analyze.py,dashboard/src/App.jsx
+---
+
+# Schema Contract — Trade Integrity Dashboard
+
+This is the canonical reference for the JSON data contract between the Python backend and React frontend. ALL agents must conform to this schema.
+
+## Top-Level Structure (enriched_trades.json)
+```json
+{
+  "generatedAt": "ISO timestamp",
+  "broker": "zerodha|dhan|yfinance",
+  "csvFile": "TradesFromPDFs.csv",
+  "dateRange": "YYYY-MM-DD_to_YYYY-MM-DD",
+  "totalTrades": 40,
+  "realDataTrades": 40,
+  "sessions": { ... },
+  "trades": [ ... ]
+}
+```
+
+## Sessions Object (shared chart data per symbol+date)
+```typescript
+interface Session {
+  candles: { t: string; o: number; h: number; l: number; c: number }[];  // ~75 bars, HH:MM format
+  ema: number[];                    // same length as candles
+  swingPoints: { idx: number; type: "high"|"low"; price: number; time: string }[];
+  barbWireZones: { startIdx: number; endIdx: number; startTime: string; endTime: string }[];
+  trendlines: { type: "bull"|"bear"; startIdx: number; endIdx: number; startPrice: number; endPrice: number; broken: boolean; brokenAtIdx: number|null }[];
+  priorDayHigh: number;
+  priorDayLow: number;
+  openingGap: number|null;
+  marketPhaseRegions: { phase: "SPIKE"|"CHANNEL"|"TRADING_RANGE"; startIdx: number; endIdx: number }[];
+}
+// Key format: "SYMBOL|YYYY-MM-DD" e.g. "BANKNIFTY FEB FUT|2026-02-23"
+```
+
+## Per-Trade Object
+```typescript
+interface Trade {
+  // Existing fields (DO NOT REMOVE)
+  tradeNum: number;
+  symbol: string;
+  side: "LONG"|"SHORT";
+  entryTime: string;           // "YYYY-MM-DD HH:MM:SS"
+  exitTime: string;
+  qty: number;
+  entryPrice: number;
+  exitPrice: number;
+  pnlPoints: number;
+  pnlRupees: number;
+  duration: string;
+  metrics: { mfe: number; mae: number; mfePct: number; maePct: number };
+  analogy: string;
+  signalBar: { open: number; high: number; low: number; close: number; isDoji: boolean; isStrongTrend: boolean; isShaved: boolean } | null;
+  emaAtEntry: number;
+  sparklineCandles: { t: string; o: number; h: number; l: number; c: number }[];
+  dataSource: "real"|"csv_only";
+
+  // NEW: Session reference
+  sessionKey: string;          // "SYMBOL|YYYY-MM-DD"
+  entryIdx: number;            // candle index within session
+  exitIdx: number;
+  mfeBarIdx: number;
+  maeBarIdx: number;
+
+  // NEW: Enhanced score
+  score: {
+    total: number;
+    context: number;
+    setupReliability: number;
+    signalBar: number;
+    institutional: number;
+    pressure: number;          // NEW component
+  };
+
+  // NEW: Score decomposition (human-readable reasons)
+  scoreDecomposition: {
+    context: { score: number; reasons: string[] };
+    setupReliability: { score: number; reasons: string[] };
+    signalBar: { score: number; reasons: string[] };
+    institutional: { score: number; reasons: string[] };
+    pressure: { score: number; reasons: string[] };
+  };
+
+  // NEW: Expanded flags
+  flags: {
+    // Existing
+    isBarbWire: boolean;
+    twoHM: number;
+    isShavedBar: boolean;
+    isGapBar: boolean;
+    leg: number;
+    isFailedFailure: boolean;
+    isInstitutionalTrap: boolean;
+    isStopRun: boolean;
+    isMiddleOfMiddle: boolean;
+    withTrend: boolean;
+    reachedMM: boolean;
+    measuredMoveTarget: number;
+    pnl: number;
+    // NEW flags
+    marketPhase: "SPIKE"|"CHANNEL"|"TRADING_RANGE";
+    alwaysInStatus: "LONG"|"SHORT"|"NEUTRAL";
+    trendlineIntact: boolean;
+    trendlineBrokenAt: string|null;
+    isFailedFinalFlag: boolean;
+    isFunctionalLeg: boolean;
+    functionalLegType: "H1→H2"|"L1→L2"|null;
+    isShrinkingStairs: boolean;
+    stairDistances: number[];
+    pressureScore: number;
+    consecutiveTrendBars: number;
+    shavedBarFrequency: number;
+    vacuumMagnet: "PDH"|"PDL"|"GAP"|"MM"|null;
+    vacuumDistance: number;
+    isBreakoutTest: boolean;
+    breakoutTestLevel: number|null;
+    gapBarWith2HM: boolean;
+    shavedBarLeg: number;
+    shavedBarIsExhaustion: boolean;
+    emaSlope: number;
+    emaSlopeClassification: "FLAT"|"MILD"|"STEEP";
+    spikeOriginPrice: number|null;
+    priorDayHigh: number;
+    priorDayLow: number;
+    openingGap: number|null;
+    // Institutional Structure indicators
+    isTFO: boolean;                    // Trend from Open active for this session
+    tfoDirection: "BULL"|"BEAR"|null;  // TFO direction
+    isM2B: boolean;                    // Moving average Buy 2nd entry
+    isM2S: boolean;                    // Moving average Short 2nd entry
+    testOfExtreme: "OVERSHOOT_HIGH"|"UNDERSHOOT_HIGH"|"OVERSHOOT_LOW"|"UNDERSHOOT_LOW"|null;
+    testOfExtremeComplete: boolean;    // Whether test of prior extreme has occurred
+    channelLineBreak: "BULL_OVERSHOOT"|"BEAR_OVERSHOOT"|null;  // Trend channel line break
+    pdInteraction: "FAILED_BO_PDH"|"FAILED_BO_PDL"|"BO_TEST_PDH"|"BO_TEST_PDL"|null;  // Prior day level interaction
+    pdProximity: number;               // Distance to nearest prior day level (pts)
+    // Brooks Compliance v2 flags
+    trVolatility: "QUIET_TR"|"VOLATILE_TR"|null;   // Trading range volatility type (only set when phase=TRADING_RANGE)
+    trendlineSignificance: "MICRO"|"MAJOR"|null;    // Trendline significance (touch count + time span)
+    barbWireLocation: "MIDDLE"|"FLAG"|null;          // Barb wire context: middle-of-range vs trend flag
+    isClimaticOutlier: boolean;                      // Bar range > 2× 20-bar ATR
+    climaticOutlierType: "SUSTAINABLE_SPIKE"|"HUGE_BAR_FAILURE"|null;
+    isFiveTickFailure: boolean;                      // Prior setup reached near-target then reversed
+    vacuumVelocity: number;                          // Combined proximity + momentum toward magnet (0-10)
+    gapBarPressure: number;                          // Consecutive bars entirely on one side of EMA
+  };
+
+  // Anti-mistake metadata
+  tradeQuality: "GOOD_WIN"|"GOOD_LOSS"|"BAD_WIN"|"BAD_LOSS";
+  mistakeTag: string;          // "#FOMO"|"#LOW_CONTEXT"|"#BARB_WIRE"|"#REVENGE"|"#OVEREXTENDED"|"#GOOD_ENTRY"|"#PERFECT_STORM"
+  thesis: string;
+  reality: string;
+  profitLeftOnTable: number;
+  maeAsStopPct: number;
+  // Brooks Compliance v2 metrics
+  captureRatio: number;          // |pnl| / MFE — how much of the available move was captured (0-1)
+  rewardToRisk: number;          // MFE / initial_risk (signal bar range) — R:R achieved
+}
+```
+
+## Constraints
+- Python: numpy, pandas, stdlib only — NO new pip deps
+- React: Tailwind CSS only — NO npm additions, NO charting libraries (SVG/Canvas only)
+- All timestamps: IST (UTC+5:30)
+- 5-minute candle timeframe, EMA period = 20
+- NSE market hours: 9:15–15:30 IST

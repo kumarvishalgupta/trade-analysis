@@ -1,0 +1,55 @@
+---
+description: "Current system architecture of the Trade Integrity Dashboard — data pipeline, existing functions, file structure. Reference when understanding how the system works."
+globs: fetch_and_analyze.py,dashboard/src/App.jsx
+---
+
+# System Architecture — Trade Integrity Dashboard
+
+## Pipeline
+```
+TradesFromPDFs.csv → fetch_and_analyze.py → enriched_trades.json → React Dashboard (App.jsx)
+```
+
+## Data
+- **Input**: 40 pre-paired round-trip trades (BANKNIFTY/NIFTY FUT, Feb 23 – Mar 13 2026)
+- **Candles**: Real 5-min OHLC cached in `candle_cache/` (~75 bars per day, 9:15-15:30 IST)
+- **EMA**: 20-period on 5-min closes
+
+## Python Backend (fetch_and_analyze.py — 1236 lines)
+
+### Fetchers
+- `ZerodhaFetcher` — Kite Connect API
+- `DhanFetcher` — REST API + scrip master
+- `YFinanceFetcher` — Free fallback (^NSEBANK / ^NSEI)
+
+### Existing Analysis Functions
+1. `compute_ema(closes, period=20)` — 20-period EMA
+2. `is_doji(candle, threshold_pct=0.1)` — Body < 10% of range
+3. `is_strong_trend_bar(candle)` — Body > 60% of range
+4. `is_shaved_bar(candle)` — No wick on one extreme (5% tolerance)
+5. `detect_barb_wire(df, center_idx, lookback=3)` — 3+ overlapping bars, ≥1 doji
+6. `compute_2hm_real(df, entry_time, ema_values)` — Consecutive same-side-of-EMA bars × 5 min
+7. `detect_gap_bar(df, ema_values, entry_idx)` — Entire bar above/below EMA (first occurrence)
+8. `find_swing_points(df)` — Swing H = bar.high > neighbors; Swing L = bar.low < neighbors
+9. `count_legs(swings, entry_idx, is_long)` — HH (bull) / LL (bear); resets on LH / HL
+10. `compute_real_mfe_mae(df, entry, exit, price, is_long)` — True MFE/MAE from candle H/L
+11. `is_stop_run_window(entry_time)` — 11:00-11:30 IST
+12. `is_middle_of_middle(entry_time, df)` — 12:00-13:30 IST + price in middle 40%
+13. `is_institutional_trap(entry_price, is_long, df, ema_values, entry_idx)` — Entry in bottom/top 25%
+14. `detect_failed_failure(trade, all_trades, idx)` — Prev loss + opposite direction + current win
+
+### Current Scoring: `compute_brooks_score()`
+Total = CTX×30% + SET×30% + SIG×20% + INST×20%, each base 5, clamped 1-10
+
+## React Frontend (dashboard/src/App.jsx — 1184 lines)
+
+### Components
+- `SummaryHeader` — Stats grid (win rate, P&L, profit factor, Brooks avg)
+- `DataSourceBanner` — Real vs CSV-only warning
+- `PainHeatmap` — Daily P&L heatmap blocks
+- `FilterBar` — Outcome/Date/Symbol/Pattern filters
+- `TradeCard` — Badges, sparkline, 2HM gauge, leg counter, score badges, analogy
+- `Sparkline` — SVG mini price chart
+- `TwoHMGauge` — Circular SVG gauge
+- `ScoreBadge` — Score display per component
+- `LegCounter` — Visual 4-block leg indicator
